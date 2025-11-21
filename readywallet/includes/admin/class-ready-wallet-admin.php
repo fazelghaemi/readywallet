@@ -2,10 +2,7 @@
 /**
  * ReadyWallet Admin Interface
  * مدیریت پیشخوان افزونه: نمایش لیست تراکنش‌ها و تغییر دستی موجودی
- * * ویژگی‌ها:
- * - نمایش جدول تراکنش‌ها از دیتابیس اختصاصی
- * - فرم واریز/برداشت دستی توسط ادمین
- * - فیلتر کردن تراکنش‌ها بر اساس کاربر
+ * * آپدیت: افزودن جستجوی AJAX کاربر و کارت‌های آماری
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -15,11 +12,20 @@ class Ready_Wallet_Admin {
     public function __construct() {
         add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
         add_action( 'admin_init', array( $this, 'handle_manual_transaction' ) );
+        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
     }
 
     /**
-     * افزودن منو به پیشخوان وردپرس
+     * بارگذاری اسکریپت‌های جستجوی کاربر ووکامرس
      */
+    public function enqueue_scripts() {
+        if ( isset($_GET['page']) && strpos($_GET['page'], 'ready-wallet') !== false ) {
+            wp_enqueue_script( 'woocommerce_admin' );
+            wp_enqueue_script( 'select2' );
+            wp_enqueue_style( 'woocommerce_admin_styles', WC()->plugin_url() . '/assets/css/admin.css' );
+        }
+    }
+
     public function add_admin_menu() {
         add_menu_page(
             __( 'کیف پول ردی', 'ready-wallet' ),
@@ -51,85 +57,90 @@ class Ready_Wallet_Admin {
     }
 
     /**
-     * نمایش صفحه اصلی (لیست تراکنش‌ها)
+     * نمایش صفحه اصلی (لیست تراکنش‌ها + آمار)
      */
     public function render_dashboard_page() {
-        // دریافت تراکنش‌ها از کلاس دیتابیس
         $wallet_db = new Ready_Wallet_DB();
-        
         $page = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
         $per_page = 20;
         $offset = ( $page - 1 ) * $per_page;
 
-        $args = [
-            'limit'  => $per_page,
-            'offset' => $offset,
-            'order'  => 'DESC'
-        ];
+        $args = [ 'limit' => $per_page, 'offset' => $offset, 'order' => 'DESC' ];
 
-        // فیلتر بر اساس کاربر
         if ( isset( $_GET['user_id'] ) && ! empty( $_GET['user_id'] ) ) {
             $args['user_id'] = intval( $_GET['user_id'] );
         }
 
         $transactions = $wallet_db->get_transactions( $args );
         
-        // محاسبه تعداد کل برای صفحه‌بندی (نیاز به کوئری count دارد که فعلاً ساده‌سازی شده)
-        // برای نسخه حرفه‌ای باید متد count_transactions به کلاس DB اضافه شود.
-        
+        // محاسبه آمار سریع (می‌تواند کش شود)
+        global $wpdb;
+        $table = $wpdb->prefix . 'ready_wallet_transactions';
+        $total_credit = $wpdb->get_var("SELECT SUM(amount) FROM $table WHERE type='credit'");
+        $total_debit = $wpdb->get_var("SELECT SUM(amount) FROM $table WHERE type='debit'");
         ?>
+        
         <div class="wrap ready-wallet-wrap">
-            <h1 class="wp-heading-inline"><?php _e( 'لیست تراکنش‌های کیف پول', 'ready-wallet' ); ?></h1>
-            <a href="<?php echo admin_url( 'admin.php?page=ready-wallet-manual' ); ?>" class="page-title-action"><?php _e( 'تراکنش دستی جدید', 'ready-wallet' ); ?></a>
+            <h1 class="wp-heading-inline"><?php _e( 'کیف پول هوشمند ردی', 'ready-wallet' ); ?></h1>
+            <a href="<?php echo admin_url( 'admin.php?page=ready-wallet-manual' ); ?>" class="page-title-action primary-btn"><?php _e( 'ثبت تراکنش جدید', 'ready-wallet' ); ?></a>
             <hr class="wp-header-end">
 
-            <div class="card" style="max-width: 100%; margin-top: 20px; padding: 0;">
+            <!-- کارت‌های آماری -->
+            <div class="rw-admin-stats">
+                <div class="rw-stat-card credit">
+                    <h3><?php echo wc_price($total_credit); ?></h3>
+                    <span><?php _e('کل شارژ انجام شده', 'ready-wallet'); ?></span>
+                </div>
+                <div class="rw-stat-card debit">
+                    <h3><?php echo wc_price($total_debit); ?></h3>
+                    <span><?php _e('کل مصرف کاربران', 'ready-wallet'); ?></span>
+                </div>
+                <div class="rw-stat-card count">
+                    <h3><?php echo count($transactions); ?>+</h3>
+                    <span><?php _e('تراکنش‌های اخیر', 'ready-wallet'); ?></span>
+                </div>
+            </div>
+
+            <!-- جدول تراکنش‌ها -->
+            <div class="rw-admin-table-wrapper">
                 <table class="wp-list-table widefat fixed striped table-view-list posts">
                     <thead>
                         <tr>
-                            <th scope="col" class="manage-column column-primary"><?php _e( 'شناسه', 'ready-wallet' ); ?></th>
-                            <th scope="col" class="manage-column"><?php _e( 'کاربر', 'ready-wallet' ); ?></th>
-                            <th scope="col" class="manage-column"><?php _e( 'نوع', 'ready-wallet' ); ?></th>
-                            <th scope="col" class="manage-column"><?php _e( 'مبلغ', 'ready-wallet' ); ?></th>
-                            <th scope="col" class="manage-column"><?php _e( 'موجودی پس از تراکنش', 'ready-wallet' ); ?></th>
-                            <th scope="col" class="manage-column"><?php _e( 'توضیحات', 'ready-wallet' ); ?></th>
-                            <th scope="col" class="manage-column"><?php _e( 'تاریخ', 'ready-wallet' ); ?></th>
+                            <th><?php _e( 'شناسه', 'ready-wallet' ); ?></th>
+                            <th><?php _e( 'کاربر', 'ready-wallet' ); ?></th>
+                            <th><?php _e( 'نوع عملیات', 'ready-wallet' ); ?></th>
+                            <th><?php _e( 'مبلغ', 'ready-wallet' ); ?></th>
+                            <th><?php _e( 'موجودی نهایی', 'ready-wallet' ); ?></th>
+                            <th><?php _e( 'توضیحات', 'ready-wallet' ); ?></th>
+                            <th><?php _e( 'تاریخ', 'ready-wallet' ); ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if ( ! empty( $transactions ) ) : ?>
                             <?php foreach ( $transactions as $transaction ) : 
                                 $user = get_userdata( $transaction->user_id );
-                                $type_label = '';
-                                $type_class = '';
-                                
-                                switch ( $transaction->type ) {
-                                    case 'credit': $type_label = 'افزایش اعتبار'; $type_class = 'updated'; break;
-                                    case 'debit': $type_label = 'برداشت/خرید'; $type_class = 'error'; break;
-                                    case 'cashback': $type_label = 'کش‌بک خرید'; $type_class = 'updated'; break;
-                                    default: $type_label = $transaction->type;
-                                }
+                                $status_class = ($transaction->type == 'credit' || $transaction->type == 'cashback') ? 'status-credit' : 'status-debit';
+                                $status_label = ($transaction->type == 'credit') ? 'واریز' : (($transaction->type == 'debit') ? 'برداشت' : $transaction->type);
                             ?>
                                 <tr>
                                     <td>#<?php echo $transaction->id; ?></td>
-                                    <td>
-                                        <a href="<?php echo admin_url( 'user-edit.php?user_id=' . $transaction->user_id ); ?>">
-                                            <?php echo $user ? $user->display_name : __( 'کاربر حذف شده', 'ready-wallet' ); ?>
-                                        </a>
-                                        <br>
-                                        <small><?php echo $user ? $user->user_email : ''; ?></small>
+                                    <td class="user-col">
+                                        <?php if($user): ?>
+                                            <div class="user-info">
+                                                <strong><?php echo $user->display_name; ?></strong>
+                                                <small><?php echo $user->user_email; ?></small>
+                                            </div>
+                                        <?php else: echo 'کاربر حذف شده'; endif; ?>
                                     </td>
-                                    <td><span class="badge <?php echo $type_class; ?>"><?php echo $type_label; ?></span></td>
-                                    <td><strong><?php echo wc_price( $transaction->amount ); ?></strong></td>
+                                    <td><span class="rw-status-badge <?php echo $status_class; ?>"><?php echo $status_label; ?></span></td>
+                                    <td class="amount-col"><?php echo wc_price( $transaction->amount ); ?></td>
                                     <td><?php echo wc_price( $transaction->balance ); ?></td>
                                     <td><?php echo $transaction->description; ?></td>
                                     <td><?php echo date_i18n( 'Y/m/d H:i', strtotime( $transaction->date ) ); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else : ?>
-                            <tr>
-                                <td colspan="7"><?php _e( 'هیچ تراکنشی یافت نشد.', 'ready-wallet' ); ?></td>
-                            </tr>
+                            <tr><td colspan="7" style="text-align:center; padding: 20px;"><?php _e( 'هنوز تراکنشی ثبت نشده است.', 'ready-wallet' ); ?></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -139,69 +150,57 @@ class Ready_Wallet_Admin {
     }
 
     /**
-     * نمایش فرم تغییر دستی موجودی
+     * نمایش فرم تغییر دستی موجودی (با جستجوی پیشرفته)
      */
     public function render_manual_transaction_page() {
         ?>
-        <div class="wrap">
-            <h1><?php _e( 'تغییر موجودی دستی کاربران', 'ready-wallet' ); ?></h1>
+        <div class="wrap ready-wallet-wrap">
+            <h1 class="wp-heading-inline"><?php _e( 'تراکنش دستی', 'ready-wallet' ); ?></h1>
             
-            <div class="card" style="max-width: 600px; padding: 20px;">
+            <div class="rw-admin-form-card">
                 <form method="post" action="">
                     <?php wp_nonce_field( 'rw_manual_transaction', 'rw_nonce' ); ?>
                     
-                    <table class="form-table">
-                        <tr>
-                            <th scope="row"><label for="user_id"><?php _e( 'شناسه کاربر (User ID)', 'ready-wallet' ); ?></label></th>
-                            <td>
-                                <input type="number" name="user_id" id="user_id" class="regular-text" required placeholder="مثال: 1">
-                                <p class="description"><?php _e( 'شناسه کاربری که می‌خواهید موجودی او را تغییر دهید.', 'ready-wallet' ); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><label for="type"><?php _e( 'نوع عملیات', 'ready-wallet' ); ?></label></th>
-                            <td>
-                                <select name="type" id="type">
-                                    <option value="credit"><?php _e( 'افزایش اعتبار (Credit)', 'ready-wallet' ); ?></option>
-                                    <option value="debit"><?php _e( 'کسر اعتبار (Debit)', 'ready-wallet' ); ?></option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><label for="amount"><?php _e( 'مبلغ', 'ready-wallet' ); ?></label></th>
-                            <td>
-                                <input type="number" name="amount" id="amount" class="regular-text" required step="0.01">
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><label for="description"><?php _e( 'توضیحات', 'ready-wallet' ); ?></label></th>
-                            <td>
-                                <textarea name="description" id="description" class="regular-text" rows="3"></textarea>
-                            </td>
-                        </tr>
-                    </table>
+                    <div class="rw-form-group">
+                        <label for="user_id"><?php _e( 'انتخاب کاربر', 'ready-wallet' ); ?></label>
+                        <!-- کلاس wc-customer-search به طور خودکار این فیلد را به جستجوی AJAX تبدیل می‌کند -->
+                        <select class="wc-customer-search" name="user_id" id="user_id" data-placeholder="<?php _e( 'جستجو بر اساس نام یا شماره موبایل...', 'ready-wallet' ); ?>" style="width: 100%;" required></select>
+                        <p class="description"><?php _e( 'نام، ایمیل یا شماره موبایل کاربر را تایپ کنید.', 'ready-wallet' ); ?></p>
+                    </div>
+
+                    <div class="rw-form-row">
+                        <div class="rw-form-group half">
+                            <label for="type"><?php _e( 'نوع عملیات', 'ready-wallet' ); ?></label>
+                            <select name="type" id="type" class="regular-text">
+                                <option value="credit"><?php _e( 'افزایش اعتبار (شارژ)', 'ready-wallet' ); ?></option>
+                                <option value="debit"><?php _e( 'کسر اعتبار (جریمه/اصلاح)', 'ready-wallet' ); ?></option>
+                            </select>
+                        </div>
+                        <div class="rw-form-group half">
+                            <label for="amount"><?php _e( 'مبلغ (تومان)', 'ready-wallet' ); ?></label>
+                            <input type="number" name="amount" id="amount" class="regular-text" required step="any" placeholder="0">
+                        </div>
+                    </div>
+
+                    <div class="rw-form-group">
+                        <label for="description"><?php _e( 'توضیحات (بابت...)', 'ready-wallet' ); ?></label>
+                        <textarea name="description" id="description" rows="3" class="large-text" placeholder="مثال: هدیه جشنواره..."></textarea>
+                    </div>
                     
-                    <p class="submit">
-                        <input type="submit" name="submit_manual_transaction" id="submit" class="button button-primary" value="<?php _e( 'ثبت تراکنش', 'ready-wallet' ); ?>">
-                    </p>
+                    <div class="rw-form-actions">
+                        <input type="submit" name="submit_manual_transaction" id="submit" class="button button-primary button-hero" value="<?php _e( 'ثبت و اعمال تغییرات', 'ready-wallet' ); ?>">
+                    </div>
                 </form>
             </div>
         </div>
         <?php
     }
 
-    /**
-     * پردازش فرم ارسال دستی
-     */
+    // هندلر فرم بدون تغییر باقی مانده است...
     public function handle_manual_transaction() {
         if ( isset( $_POST['submit_manual_transaction'] ) && isset( $_POST['rw_nonce'] ) ) {
-            if ( ! wp_verify_nonce( $_POST['rw_nonce'], 'rw_manual_transaction' ) ) {
-                return;
-            }
-
-            if ( ! current_user_can( 'manage_woocommerce' ) ) {
-                return;
-            }
+            if ( ! wp_verify_nonce( $_POST['rw_nonce'], 'rw_manual_transaction' ) ) return;
+            if ( ! current_user_can( 'manage_woocommerce' ) ) return;
 
             $user_id = intval( $_POST['user_id'] );
             $amount  = floatval( $_POST['amount'] );
@@ -209,26 +208,17 @@ class Ready_Wallet_Admin {
             $desc    = sanitize_textarea_field( $_POST['description'] );
 
             $wallet_db = new Ready_Wallet_DB();
-            
             $result = $wallet_db->add_transaction([
-                'user_id'      => $user_id,
-                'amount'       => $amount,
-                'type'         => $type,
-                'description'  => $desc . ' (توسط مدیر)',
-                'admin_id'     => get_current_user_id()
+                'user_id' => $user_id, 'amount' => $amount, 'type' => $type,
+                'description' => $desc . ' (توسط مدیر)', 'admin_id' => get_current_user_id()
             ]);
 
             if ( is_wp_error( $result ) ) {
-                add_action( 'admin_notices', function() use ($result) {
-                    echo '<div class="notice notice-error"><p>' . $result->get_error_message() . '</p></div>';
-                });
+                add_action( 'admin_notices', function() use ($result) { echo '<div class="notice notice-error"><p>' . $result->get_error_message() . '</p></div>'; });
             } else {
-                add_action( 'admin_notices', function() {
-                    echo '<div class="notice notice-success"><p>' . __( 'تراکنش با موفقیت ثبت شد.', 'ready-wallet' ) . '</p></div>';
-                });
+                add_action( 'admin_notices', function() { echo '<div class="notice notice-success"><p>' . __( 'تراکنش با موفقیت ثبت شد.', 'ready-wallet' ) . '</p></div>'; });
             }
         }
     }
 }
-
 return new Ready_Wallet_Admin();

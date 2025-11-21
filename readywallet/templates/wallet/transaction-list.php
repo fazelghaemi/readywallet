@@ -1,33 +1,51 @@
 <?php
 /**
- * The Template for displaying transaction list with Pagination.
+ * The Template for displaying transaction list.
  *
- * @package ReadyWallet/Templates
- * @version 2.5.0
+ * لیست تراکنش‌های "خارق‌العاده" با طراحی مدرن، ریسپانسیو و صفحه‌بندی.
+ *
+ * @package     ReadyWallet/Templates
+ * @version     2.9.0
+ * @author      Ready Studio
  */
 
 defined( 'ABSPATH' ) || exit;
 
-// دریافت متغیرهایی که از کلاس Shortcodes ارسال شده‌اند
+// دریافت متغیرهای ارسال شده از شورتکد
 $transactions = get_query_var( 'rw_transactions', [] );
 $current_page = get_query_var( 'rw_current_page', 1 );
 $total_pages  = get_query_var( 'rw_total_pages', 1 );
 ?>
 
 <div class="woo-wallet-transactions-wrapper">
-    <div class="rw-section-header">
-        <h4 class="rw-section-title"><?php _e( 'تاریخچه تراکنش‌ها', 'ready-wallet' ); ?></h4>
-        <span class="rw-meta-info"><?php printf( __( 'صفحه %d از %d', 'ready-wallet' ), $current_page, max(1, $total_pages) ); ?></span>
+    
+    <!-- 1. هدر بخش تراکنش‌ها -->
+    <div class="rw-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <h4 class="rw-section-title" style="margin: 0; font-size: 18px; color: var(--rw-text-main); font-weight: 700;"><?php _e( 'تراکنش‌های اخیر', 'ready-wallet' ); ?></h4>
+            <span class="rw-meta-info" style="font-size: 12px; color: var(--rw-text-muted); background: #f3f4f6; padding: 2px 8px; border-radius: 6px; margin-top: 4px; display: inline-block;">
+                <?php printf( __( 'صفحه %d از %d', 'ready-wallet' ), $current_page, max(1, $total_pages) ); ?>
+            </span>
+        </div>
+        
+        <!-- دکمه ابزار: رفرش صفحه -->
+        <div class="rw-tools">
+            <button type="button" class="rw-icon-btn" title="<?php _e('به‌روزرسانی لیست', 'ready-wallet'); ?>" onclick="location.reload();" 
+                style="background: transparent; border: 1px solid var(--rw-border); border-radius: 8px; padding: 8px; cursor: pointer; color: var(--rw-text-muted); transition: all 0.2s;">
+                <span class="dashicons dashicons-update"></span>
+            </button>
+        </div>
     </div>
 
+    <!-- 2. جدول ریسپانسیو -->
     <div class="rw-table-responsive">
         <table class="woo-wallet-transactions">
             <thead>
                 <tr>
-                    <th><?php _e( 'شناسه', 'ready-wallet' ); ?></th>
-                    <th><?php _e( 'نوع', 'ready-wallet' ); ?></th>
+                    <th style="width: 60px;">#</th>
+                    <th><?php _e( 'نوع عملیات', 'ready-wallet' ); ?></th>
                     <th><?php _e( 'مبلغ', 'ready-wallet' ); ?></th>
-                    <th><?php _e( 'تاریخ', 'ready-wallet' ); ?></th>
+                    <th><?php _e( 'تاریخ و زمان', 'ready-wallet' ); ?></th>
                     <th class="rw-col-details"><?php _e( 'توضیحات', 'ready-wallet' ); ?></th>
                 </tr>
             </thead>
@@ -35,50 +53,93 @@ $total_pages  = get_query_var( 'rw_total_pages', 1 );
                 <?php if ( $transactions && count( $transactions ) > 0 ) : ?>
                     <?php foreach ( $transactions as $transaction ) : ?>
                         <?php 
-                            // تعیین کلاس رنگی بر اساس نوع تراکنش
+                            // تعیین استایل و آیکون بر اساس نوع تراکنش
                             $row_class = '';
                             $icon = '';
+                            $amount_prefix = '';
+                            $label = '';
+                            $badge_class = '';
+                            
                             switch($transaction->type) {
                                 case 'credit': 
                                     $row_class = 'type-credit'; 
-                                    $icon = '<span class="rw-badge credit">' . __('واریز', 'ready-wallet') . '</span>';
+                                    $icon = 'dashicons-arrow-down-alt';
+                                    $label = __('واریز', 'ready-wallet');
+                                    $badge_class = 'credit';
+                                    $amount_prefix = '+';
                                     break;
                                 case 'debit': 
                                     $row_class = 'type-debit'; 
-                                    $icon = '<span class="rw-badge debit">' . __('برداشت', 'ready-wallet') . '</span>';
+                                    $icon = 'dashicons-arrow-up-alt';
+                                    $label = __('برداشت', 'ready-wallet');
+                                    $badge_class = 'debit';
+                                    $amount_prefix = '-';
                                     break;
                                 case 'cashback':
                                     $row_class = 'type-cashback';
-                                    $icon = '<span class="rw-badge cashback" style="background:#fff3cd; color:#856404;">' . __('پاداش', 'ready-wallet') . '</span>';
+                                    $icon = 'dashicons-awards';
+                                    $label = __('پاداش', 'ready-wallet');
+                                    $badge_class = 'cashback';
+                                    $amount_prefix = '+';
+                                    break;
+                                case 'refund':
+                                    $row_class = 'type-credit';
+                                    $icon = 'dashicons-undo';
+                                    $label = __('بازگشت وجه', 'ready-wallet');
+                                    $badge_class = 'credit'; // سبز
+                                    $amount_prefix = '+';
                                     break;
                                 default:
-                                    $icon = '<span class="rw-badge default">' . esc_html($transaction->type) . '</span>';
+                                    $icon = 'dashicons-marker';
+                                    $label = $transaction->type;
+                                    $badge_class = 'default';
                             }
                         ?>
                         <tr class="<?php echo esc_attr( $row_class ); ?>">
-                            <td class="rw-id">#<?php echo $transaction->id; ?></td>
-                            <td class="rw-status"><?php echo $icon; ?></td>
+                            <!-- شناسه -->
+                            <td class="rw-id" style="color: var(--rw-text-muted); font-family: sans-serif; font-size: 12px;">
+                                <?php echo $transaction->id; ?>
+                            </td>
+                            
+                            <!-- وضعیت -->
+                            <td class="rw-status">
+                                <span class="rw-badge <?php echo $badge_class; ?>" style="display: inline-flex; align-items: center; gap: 6px; width: fit-content;">
+                                    <span class="dashicons <?php echo $icon; ?>" style="font-size: 16px; width: 16px; height: 16px;"></span>
+                                    <?php echo $label; ?>
+                                </span>
+                            </td>
+                            
+                            <!-- مبلغ -->
                             <td class="rw-amount">
-                                <?php 
-                                    $prefix = ($transaction->type == 'credit' || $transaction->type == 'cashback') ? '+' : '-';
-                                    echo '<span class="amount-val">' . $prefix . ' ' . wc_price( $transaction->amount ) . '</span>';
-                                ?>
+                                <span class="amount-val" style="font-weight: 700; font-size: 15px; direction: ltr; display: inline-block; font-family: sans-serif;">
+                                    <?php echo $amount_prefix . ' ' . wc_price( $transaction->amount ); ?>
+                                </span>
                             </td>
+                            
+                            <!-- تاریخ -->
                             <td class="rw-date">
-                                <?php echo date_i18n( 'Y/m/d', strtotime( $transaction->date ) ); ?>
-                                <small><?php echo date_i18n( 'H:i', strtotime( $transaction->date ) ); ?></small>
+                                <div style="display: flex; flex-direction: column; font-size: 12px; line-height: 1.4;">
+                                    <span style="font-weight: 600; color: var(--rw-text-main);"><?php echo date_i18n( 'Y/m/d', strtotime( $transaction->date ) ); ?></span>
+                                    <span style="color: var(--rw-text-muted);"><?php echo date_i18n( 'H:i', strtotime( $transaction->date ) ); ?></span>
+                                </div>
                             </td>
-                            <td class="rw-details">
-                                <?php echo wp_trim_words( $transaction->description, 10 ); ?>
+                            
+                            <!-- جزئیات -->
+                            <td class="rw-details" style="max-width: 250px; font-size: 13px; line-height: 1.6; color: var(--rw-text-main);">
+                                <?php echo wp_trim_words( $transaction->description, 12 ); ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else : ?>
+                    <!-- 3. حالت خالی (Empty State) -->
                     <tr class="rw-empty-state">
                         <td colspan="5">
-                            <div class="rw-empty-content">
-                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#e0e0e0" stroke-width="1"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                                <p><?php _e( 'هنوز تراکنشی انجام نشده است.', 'ready-wallet' ); ?></p>
+                            <div class="rw-empty-content" style="padding: 50px 20px; text-align: center;">
+                                <div style="background: #f3f4f6; width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                                    <span class="dashicons dashicons-list-view" style="font-size: 40px; color: #d1d5db; width: 40px; height: 40px;"></span>
+                                </div>
+                                <h5 style="margin: 0 0 8px; color: var(--rw-text-main); font-size: 16px; font-weight: 700;"><?php _e( 'تراکنشی یافت نشد!', 'ready-wallet' ); ?></h5>
+                                <p style="margin: 0; color: var(--rw-text-muted); font-size: 14px;"><?php _e( 'شما هنوز هیچ تراکنشی انجام نداده‌اید.', 'ready-wallet' ); ?></p>
                             </div>
                         </td>
                     </tr>
@@ -87,52 +148,35 @@ $total_pages  = get_query_var( 'rw_total_pages', 1 );
         </table>
     </div>
 
-    <!-- کنترل‌های صفحه‌بندی -->
+    <!-- 4. کنترل‌های صفحه‌بندی (Pagination) -->
     <?php if ( $total_pages > 1 ) : ?>
         <div class="rw-pagination">
-            <?php 
-            // ساخت آدرس پایه
-            $current_url = remove_query_arg( 'rw_page' ); 
-            ?>
+            <?php $current_url = remove_query_arg( 'rw_page' ); ?>
             
+            <!-- دکمه قبلی -->
             <?php if ( $current_page > 1 ) : ?>
                 <a href="<?php echo esc_url( add_query_arg( 'rw_page', $current_page - 1, $current_url ) ); ?>" class="rw-page-btn prev">
-                    &larr; <?php _e( 'قبلی', 'ready-wallet' ); ?>
+                    <span class="dashicons dashicons-arrow-right-alt2"></span> <?php _e( 'قبلی', 'ready-wallet' ); ?>
                 </a>
             <?php else: ?>
-                <span class="rw-page-btn disabled">&larr; <?php _e( 'قبلی', 'ready-wallet' ); ?></span>
+                <span class="rw-page-btn disabled"><span class="dashicons dashicons-arrow-right-alt2"></span> <?php _e( 'قبلی', 'ready-wallet' ); ?></span>
             <?php endif; ?>
 
-            <div class="rw-page-numbers">
-                <?php for($i = 1; $i <= min(5, $total_pages); $i++): ?>
-                    <a href="<?php echo esc_url( add_query_arg( 'rw_page', $i, $current_url ) ); ?>" class="page-num <?php echo ($i == $current_page) ? 'active' : ''; ?>">
-                        <?php echo $i; ?>
-                    </a>
-                <?php endfor; ?>
-                <?php if($total_pages > 5): ?><span>...</span><?php endif; ?>
+            <!-- شماره صفحات -->
+            <div class="rw-page-numbers" style="display: flex; align-items: center; gap: 5px; font-size: 14px;">
+                <span class="page-num active" style="font-weight: bold; color: var(--rw-primary);"><?php echo $current_page; ?></span>
+                <span style="color: var(--rw-border);">/</span>
+                <span class="page-num" style="color: var(--rw-text-muted);"><?php echo $total_pages; ?></span>
             </div>
 
+            <!-- دکمه بعدی -->
             <?php if ( $current_page < $total_pages ) : ?>
                 <a href="<?php echo esc_url( add_query_arg( 'rw_page', $current_page + 1, $current_url ) ); ?>" class="rw-page-btn next">
-                    <?php _e( 'بعدی', 'ready-wallet' ); ?> &rarr;
+                    <?php _e( 'بعدی', 'ready-wallet' ); ?> <span class="dashicons dashicons-arrow-left-alt2"></span>
                 </a>
             <?php else: ?>
-                <span class="rw-page-btn disabled"><?php _e( 'بعدی', 'ready-wallet' ); ?> &rarr;</span>
+                <span class="rw-page-btn disabled"><?php _e( 'بعدی', 'ready-wallet' ); ?> <span class="dashicons dashicons-arrow-left-alt2"></span></span>
             <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>
-
-<style>
-/* استایل داخلی برای صفحه‌بندی */
-.rw-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.rw-meta-info { font-size: 12px; color: #999; background: #eee; padding: 3px 8px; border-radius: 4px; }
-.rw-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
-.rw-page-btn { padding: 8px 16px; background: #fff; border: 1px solid #ddd; border-radius: 8px; text-decoration: none; color: #555; font-size: 13px; transition: all 0.2s; }
-.rw-page-btn:hover:not(.disabled) { background: var(--rw-primary, #5D34F2); color: #fff; border-color: var(--rw-primary, #5D34F2); }
-.rw-page-btn.disabled { opacity: 0.5; cursor: not-allowed; }
-.rw-page-numbers .page-num { display: inline-block; padding: 5px 10px; margin: 0 2px; border-radius: 5px; text-decoration: none; color: #777; }
-.rw-page-numbers .page-num.active { background: var(--rw-primary, #5D34F2); color: #fff; }
-.rw-empty-content { text-align: center; padding: 30px; color: #aaa; }
-.rw-table-responsive { overflow-x: auto; }
-</style>

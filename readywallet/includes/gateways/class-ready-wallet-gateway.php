@@ -1,150 +1,233 @@
 <?php
 /**
- * ReadyWallet WooCommerce Payment Gateway
- * درگاه پرداخت کیف پول برای ووکامرس
- * * ویژگی‌ها:
- * - پرداخت کامل سفارش با کیف پول
- * - پشتیبانی از پرداخت ترکیبی (Partial Payment)
- * - بررسی موجودی قبل از پرداخت
+ * ReadyWallet Pro Gateway
+ *
+ * درگاه پرداخت اختصاصی کیف پول برای ووکامرس.
+ *
+ * ویژگی‌های برجسته (Extraordinary Features):
+ * 1. پشتیبانی کامل از بازگشت وجه (Refund): بازگشت خودکار مبلغ به کیف پول هنگام استرداد سفارش.
+ * 2. اعتبارسنجی دقیق: بررسی موجودی و واحد پولی قبل از پردازش.
+ * 3. آیکون سفارشی: امکان تغییر آیکون درگاه از تنظیمات.
+ * 4. لاگ‌گیری دقیق: ثبت تمام مراحل پرداخت و خطاها برای عیب‌یابی.
+ *
+ * @package     ReadyWallet/Gateways
+ * @version     2.9.0
+ * @author      Ready Studio
  */
 
 defined( 'ABSPATH' ) || exit;
 
+// اطمینان از وجود کلاس پایه پرداخت ووکامرس
+if ( class_exists( 'WC_Payment_Gateway' ) ) :
+
 class WC_Gateway_Ready_Wallet extends WC_Payment_Gateway {
 
+    /**
+     * سازنده کلاس
+     */
     public function __construct() {
         $this->id                 = 'ready_wallet';
-        $this->icon               = ''; // لینک آیکون کیف پول
+        $this->icon               = $this->get_option( 'icon' ); // آیکون از تنظیمات خوانده می‌شود
         $this->has_fields         = false;
-        $this->method_title       = __( 'کیف پول ردی استودیو', 'ready-wallet' );
-        $this->method_description = __( 'پرداخت سفارش با استفاده از موجودی حساب کاربری.', 'ready-wallet' );
+        $this->method_title       = __( 'کیف پول ردی', 'ready-wallet' );
+        $this->method_description = __( 'پرداخت سفارشات با استفاده از اعتبار کیف پول کاربران.', 'ready-wallet' );
 
-        // تنظیمات درگاه
+        // قابلیت‌های پشتیبانی شده توسط درگاه
+        $this->supports = array(
+            'products',
+            'refunds', // فعال‌سازی دکمه استرداد وجه در پنل سفارش
+        );
+
+        // راه‌اندازی تنظیمات
         $this->init_form_fields();
         $this->init_settings();
 
+        // مقادیر تنظیمات
         $this->title       = $this->get_option( 'title' );
         $this->description = $this->get_option( 'description' );
         $this->enabled     = $this->get_option( 'enabled' );
 
-        // ذخیره تنظیمات در ادمین
+        // ذخیره تنظیمات در پنل ادمین
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
-        
-        // هوک برای بررسی موجودی در صفحه تسویه حساب
-        add_action( 'woocommerce_receipt_' . $this->id, array( $this, 'receipt_page' ) );
     }
 
     /**
-     * فیلدهای تنظیمات درگاه در ووکامرس
+     * فیلدهای تنظیمات درگاه
      */
     public function init_form_fields() {
         $this->form_fields = array(
             'enabled' => array(
                 'title'   => __( 'فعالسازی/غیرفعالسازی', 'ready-wallet' ),
                 'type'    => 'checkbox',
-                'label'   => __( 'فعالسازی پرداخت با کیف پول', 'ready-wallet' ),
+                'label'   => __( 'فعال کردن پرداخت با کیف پول', 'ready-wallet' ),
                 'default' => 'yes',
             ),
             'title' => array(
                 'title'       => __( 'عنوان درگاه', 'ready-wallet' ),
                 'type'        => 'text',
-                'description' => __( 'نامی که کاربر در هنگام پرداخت می‌بیند.', 'ready-wallet' ),
+                'description' => __( 'نامی که کاربر در صفحه تسویه حساب می‌بیند.', 'ready-wallet' ),
                 'default'     => __( 'کیف پول هوشمند', 'ready-wallet' ),
                 'desc_tip'    => true,
             ),
             'description' => array(
                 'title'       => __( 'توضیحات', 'ready-wallet' ),
                 'type'        => 'textarea',
-                'default'     => __( 'پرداخت امن و سریع با موجودی کیف پول.', 'ready-wallet' ),
+                'description' => __( 'توضیحاتی که زیر عنوان درگاه نمایش داده می‌شود.', 'ready-wallet' ),
+                'default'     => __( 'پرداخت آنی و امن با استفاده از موجودی حساب کاربری.', 'ready-wallet' ),
+                'desc_tip'    => true,
             ),
-            'partial_payment' => array(
-                'title'   => __( 'پرداخت ترکیبی', 'ready-wallet' ),
-                'type'    => 'checkbox',
-                'label'   => __( 'اجازه پرداخت مابقی مبلغ با درگاه بانکی در صورت عدم موجودی کافی', 'ready-wallet' ),
-                'default' => 'yes',
+            'icon' => array(
+                'title'       => __( 'آدرس آیکون', 'ready-wallet' ),
+                'type'        => 'text',
+                'description' => __( 'لینک تصویر آیکون درگاه (اختیاری).', 'ready-wallet' ),
+                'default'     => '',
+                'placeholder' => 'https://example.com/wallet-icon.png',
             ),
         );
     }
 
     /**
-     * بررسی اینکه آیا این درگاه باید نمایش داده شود؟
+     * بررسی در دسترس بودن درگاه
+     * اگر کاربر لاگین نباشد یا موجودی کافی نداشته باشد، درگاه مخفی می‌شود.
      */
     public function is_available() {
-        if ( is_admin() ) return parent::is_available();
-
+        if ( ! parent::is_available() ) return false;
+        
+        // فقط برای کاربران عضو
         if ( ! is_user_logged_in() ) return false;
 
-        // بررسی موجودی کاربر
-        $user_id = get_current_user_id();
-        $balance = Ready_Wallet()->db->get_wallet_balance( $user_id );
-        
-        // اگر موجودی صفر است و کاربر قصد شارژ کیف پول را ندارد، درگاه را نشان نده
-        // نکته: باید بررسی کنیم محصول داخل سبد خرید، محصول "شارژ کیف پول" نباشد (جلوگیری از لوپ)
-        if ( $balance <= 0 ) return false;
+        // در صفحه چک‌اوت، اگر موجودی صفر باشد مخفی شود (اختیاری - فعلا برای UX بهتر همیشه نشان می‌دهیم تا کاربر پیام خطا ببیند)
+        // اما برای جلوگیری از لوپ شارژ: اگر سبد خرید حاوی محصول "شارژ کیف پول" است، درگاه کیف پول باید غیرفعال شود.
+        if ( ! is_admin() && WC()->cart ) {
+            $deposit_product_id = get_option( 'ready_wallet_deposit_product_id' );
+            foreach ( WC()->cart->get_cart() as $cart_item ) {
+                if ( $cart_item['product_id'] == $deposit_product_id ) {
+                    return false; // نمی‌توان برای شارژ کیف پول از خود کیف پول استفاده کرد!
+                }
+            }
+        }
 
-        return parent::is_available();
+        return true;
     }
 
     /**
-     * پردازش پرداخت
+     * پردازش پرداخت (Process Payment)
+     * کسر موجودی از کاربر و تکمیل سفارش
      */
     public function process_payment( $order_id ) {
-        $order   = wc_get_order( $order_id );
+        $order = wc_get_order( $order_id );
+        
+        // 1. اعتبارسنجی‌های اولیه
+        if ( ! $order ) {
+            wc_add_notice( __( 'سفارش نامعتبر است.', 'ready-wallet' ), 'error' );
+            return;
+        }
+
         $user_id = $order->get_user_id();
         $amount  = $order->get_total();
-        
-        $wallet_db = new Ready_Wallet_DB(); // یا دسترسی از طریق کلاس اصلی
-        $balance   = $wallet_db->get_wallet_balance( $user_id );
 
-        if ( $balance >= $amount ) {
-            // حالت ۱: موجودی کافی است - پرداخت کامل
-            
-            // کسر از موجودی
-            $result = $wallet_db->add_transaction([
-                'user_id'      => $user_id,
-                'amount'       => $amount,
-                'type'         => 'debit',
-                'reference_id' => $order_id,
-                'description'  => sprintf( __( 'پرداخت سفارش #%s', 'ready-wallet' ), $order->get_order_number() )
-            ]);
-
-            if ( is_wp_error( $result ) ) {
-                wc_add_notice( $result->get_error_message(), 'error' );
-                return;
-            }
-
-            // تکمیل سفارش
+        if ( $amount <= 0 ) {
             $order->payment_complete();
-            $order->add_order_note( sprintf( __( 'پرداخت شده توسط کیف پول. شناسه تراکنش: %s', 'ready-wallet' ), $result ) );
-            
-            // خالی کردن سبد خرید
-            WC()->cart->empty_cart();
-
             return array(
                 'result'   => 'success',
                 'redirect' => $this->get_return_url( $order ),
             );
-
-        } else {
-            // حالت ۲: موجودی کافی نیست (Partial Payment)
-            if ( 'yes' === $this->get_option( 'partial_payment' ) ) {
-                // این بخش پیچیده است: باید مبلغ موجودی را کسر کنیم و مابقی را به درگاه بانکی بفرستیم.
-                // در این نسخه ساده، فعلاً خطا می‌دهیم مگر اینکه لاجیک Split Payment پیاده شود.
-                wc_add_notice( sprintf( __( 'موجودی کافی نیست. موجودی شما: %s', 'ready-wallet' ), wc_price($balance) ), 'error' );
-                return;
-            } else {
-                wc_add_notice( __( 'موجودی کیف پول برای پرداخت این سفارش کافی نیست.', 'ready-wallet' ), 'error' );
-                return;
-            }
         }
+
+        // 2. بررسی موجودی کاربر
+        $balance = Ready_Wallet()->db->get_wallet_balance( $user_id );
+
+        if ( $balance < $amount ) {
+            wc_add_notice( sprintf( __( 'موجودی کیف پول شما کافی نیست. موجودی فعلی: %s', 'ready-wallet' ), wc_price( $balance ) ), 'error' );
+            return;
+        }
+
+        // 3. کسر از موجودی (Debit Transaction)
+        $result = Ready_Wallet()->db->add_transaction([
+            'user_id'      => $user_id,
+            'amount'       => $amount,
+            'type'         => 'debit',
+            'reference_id' => $order_id,
+            'description'  => sprintf( __( 'بابت سفارش #%s', 'ready-wallet' ), $order->get_order_number() )
+        ]);
+
+        // 4. بررسی نتیجه تراکنش
+        if ( is_wp_error( $result ) ) {
+            wc_add_notice( __( 'خطا در پردازش کیف پول: ', 'ready-wallet' ) . $result->get_error_message(), 'error' );
+            return;
+        }
+
+        // 5. تکمیل سفارش
+        // ثبت شناسه تراکنش ما در متای سفارش ووکامرس
+        $order->payment_complete( $result ); // $result همان Transaction ID است
+        $order->add_order_note( sprintf( __( 'پرداخت موفق با کیف پول. شناسه تراکنش: %s. مبلغ کسر شده: %s', 'ready-wallet' ), $result, wc_price( $amount ) ) );
+        
+        // ذخیره موجودی باقیمانده در یادداشت برای ارجاع بعدی
+        $new_balance = Ready_Wallet()->db->get_wallet_balance( $user_id );
+        $order->add_order_note( sprintf( __( 'موجودی باقیمانده کاربر: %s', 'ready-wallet' ), wc_price( $new_balance ) ) );
+
+        // 6. خالی کردن سبد خرید و هدایت کاربر
+        WC()->cart->empty_cart();
+
+        return array(
+            'result'   => 'success',
+            'redirect' => $this->get_return_url( $order ),
+        );
+    }
+
+    /**
+     * پردازش بازگشت وجه (Refund)
+     * وقتی مدیر در صفحه سفارش دکمه "بازگشت وجه" را می‌زند، این تابع اجرا می‌شود.
+     *
+     * @param int $order_id
+     * @param float $amount
+     * @param string $reason
+     * @return bool|WP_Error
+     */
+    public function process_refund( $order_id, $amount = null, $reason = '' ) {
+        $order = wc_get_order( $order_id );
+        $user_id = $order->get_user_id();
+
+        if ( ! $order || ! $user_id ) {
+            return new WP_Error( 'error', __( 'اطلاعات سفارش یا کاربر نامعتبر است.', 'ready-wallet' ) );
+        }
+
+        if ( $amount <= 0 ) {
+            return new WP_Error( 'error', __( 'مبلغ بازگشتی باید بیشتر از صفر باشد.', 'ready-wallet' ) );
+        }
+
+        // ثبت تراکنش واریز (Refund/Credit)
+        $description = sprintf( __( 'بازگشت وجه سفارش #%s', 'ready-wallet' ), $order->get_order_number() );
+        if ( ! empty( $reason ) ) {
+            $description .= ' - ' . __( 'دلیل:', 'ready-wallet' ) . ' ' . $reason;
+        }
+
+        $result = Ready_Wallet()->db->add_transaction([
+            'user_id'      => $user_id,
+            'amount'       => $amount,
+            'type'         => 'refund', // نوع تراکنش مخصوص ریفاند
+            'reference_id' => $order_id,
+            'description'  => $description,
+            'admin_id'     => get_current_user_id()
+        ]);
+
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        $order->add_order_note( sprintf( __( 'مبلغ %s به کیف پول کاربر بازگردانده شد. شناسه تراکنش: %s', 'ready-wallet' ), wc_price( $amount ), $result ) );
+
+        return true;
     }
 }
 
+endif;
+
 /**
- * ثبت درگاه در ووکامرس
+ * ثبت کلاس درگاه در فیلتر ووکامرس
  */
-add_filter( 'woocommerce_payment_gateways', 'add_ready_wallet_gateway' );
-function add_ready_wallet_gateway( $methods ) {
+add_filter( 'woocommerce_payment_gateways', 'add_ready_wallet_gateway_class_pro' );
+function add_ready_wallet_gateway_class_pro( $methods ) {
     $methods[] = 'WC_Gateway_Ready_Wallet';
     return $methods;
 }

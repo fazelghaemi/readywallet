@@ -1,40 +1,148 @@
 /* ReadyWallet Admin Styles */
 
-/* تغییر رنگ منوی ادمین در صورت نیاز یا المان‌های صفحه کیف پول */
-.woo-wallet-transaction-details,
-.woo-wallet-settings-header {
-    border-top: 3px solid #5D34F2; /* بنفش ردی استودیو */
+:root {
+    --rw-admin-primary: #5D34F2;
+    --rw-admin-secondary: #1A1A2E;
+    --rw-admin-bg: #f0f2f5;
+    --rw-admin-card-bg: #ffffff;
+    --rw-admin-text: #1e293b;
+    --rw-admin-border: #e2e8f0;
 }
 
-/* دکمه‌های اصلی کیف پول در ادمین */
-.woo-wallet-btn,
-button.woo-wallet-btn {
-    background-color: #5D34F2 !important;
-    border-color: #5D34F2 !important;
-    color: #fff !important;
-    transition: all 0.3s ease;
+.ready-wallet-wrap {
+    margin: 20px 20px 0 0;
 }
 
-.woo-wallet-btn:hover {
-    background-color: #1A1A2E !important; /* سورمه‌ای تیره */
-    border-color: #1A1A2E !important;
+.rw-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-/* استایل باکس‌های متاباکس در صفحه سفارش */
-#woocommerce-order-woo-wallet .inside {
-    background: #f8f9fc;
+/* کارت‌های آماری */
+.rw-admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.rw-stat-card {
+    background: var(--rw-admin-card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-right: 4px solid transparent;
+    transition: transform 0.2s;
+}
+
+.rw-stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.rw-stat-card.credit { border-color: #10b981; }
+.rw-stat-card.debit { border-color: #ef4444; }
+.rw-stat-card.total { border-color: var(--rw-admin-primary); }
+
+.rw-stat-card .dashicons {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    opacity: 0.2;
+}
+
+.rw-stat-card .stat-content h3 {
+    margin: 0;
+    font-size: 24px;
+    color: var(--rw-admin-text);
+    font-weight: 800;
+}
+
+.rw-stat-card .stat-content span {
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* جدول تراکنش‌ها */
+.rw-admin-table-wrapper {
+    background: var(--rw-admin-card-bg);
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.wp-list-table.widefat {
+    border: none;
+    box-shadow: none;
+}
+
+.wp-list-table thead th {
+    border-bottom: 2px solid var(--rw-admin-border);
+    padding: 15px;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.wp-list-table tbody td {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+.rw-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+}
+.rw-badge.status-credit { background: #d1fae5; color: #065f46; }
+.rw-badge.status-debit { background: #fee2e2; color: #991b1b; }
+
+.amount-col {
+    font-weight: bold;
+    color: var(--rw-admin-primary);
+}
+
+/* فرم مدرن */
+.rw-admin-form-card {
+    background: var(--rw-admin-card-bg);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.rw-form-group { margin-bottom: 20px; }
+.rw-form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+.rw-form-group input, .rw-form-group select, .rw-form-group textarea {
+    border: 2px solid var(--rw-admin-border);
     border-radius: 8px;
+    padding: 10px;
+    transition: all 0.2s;
+}
+.rw-form-group input:focus {
+    border-color: var(--rw-admin-primary);
+    box-shadow: none;
 }
 
-/* تغییر آیکون منو (اگر کلاسیک باشد) */
-#toplevel_page_woo-wallet .wp-menu-image::before {
-    color: #00D2FF !important; /* آبی نئونی */
-}
+.rw-form-row { display: flex; gap: 15px; }
+.rw-form-row .half { flex: 1; }
 
-/* فیلدهای تنظیمات */
-#ready_wallet_sms_api_key {
-    font-family: monospace;
-    letter-spacing: 1px;
-    background: #f0f0f1;
-    border: 1px solid #ccc;
+.button-hero {
+    background: var(--rw-admin-primary) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 12px 30px !important;
+    border-radius: 8px !important;
+    font-size: 15px !important;
+    box-shadow: 0 4px 6px rgba(93, 52, 242, 0.2) !important;
+    transition: transform 0.2s !important;
+}
+.button-hero:hover {
+    transform: translateY(-2px);
 }

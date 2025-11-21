@@ -1,0 +1,40 @@
+/* ReadyWallet Admin Styles */
+
+/* تغییر رنگ منوی ادمین در صورت نیاز یا المان‌های صفحه کیف پول */
+.woo-wallet-transaction-details,
+.woo-wallet-settings-header {
+    border-top: 3px solid #5D34F2; /* بنفش ردی استودیو */
+}
+
+/* دکمه‌های اصلی کیف پول در ادمین */
+.woo-wallet-btn,
+button.woo-wallet-btn {
+    background-color: #5D34F2 !important;
+    border-color: #5D34F2 !important;
+    color: #fff !important;
+    transition: all 0.3s ease;
+}
+
+.woo-wallet-btn:hover {
+    background-color: #1A1A2E !important; /* سورمه‌ای تیره */
+    border-color: #1A1A2E !important;
+}
+
+/* استایل باکس‌های متاباکس در صفحه سفارش */
+#woocommerce-order-woo-wallet .inside {
+    background: #f8f9fc;
+    border-radius: 8px;
+}
+
+/* تغییر آیکون منو (اگر کلاسیک باشد) */
+#toplevel_page_woo-wallet .wp-menu-image::before {
+    color: #00D2FF !important; /* آبی نئونی */
+}
+
+/* فیلدهای تنظیمات */
+#ready_wallet_sms_api_key {
+    font-family: monospace;
+    letter-spacing: 1px;
+    background: #f0f0f1;
+    border: 1px solid #ccc;
+}

@@ -1,0 +1,149 @@
+/* * ReadyWallet Frontend Styles 
+ * Theme: Ready Studio Corporate (Purple/Dark Blue)
+ */
+
+ :root {
+    --rw-primary: #5D34F2;       /* بنفش ردی استودیو */
+    --rw-secondary: #1A1A2E;     /* سورمه‌ای تیره */
+    --rw-accent: #00D2FF;        /* آبی نئونی */
+    --rw-bg-card: #ffffff;
+    --rw-text-main: #333333;
+    --rw-text-light: #ffffff;
+    --rw-shadow: 0 10px 30px rgba(93, 52, 242, 0.15);
+    --rw-radius: 16px;
+}
+
+/* کانتینر اصلی */
+.woo-wallet-my-wallet-container {
+    background-color: #f8f9fc;
+    padding: 30px;
+    border-radius: var(--rw-radius);
+    font-family: 'Vazir', 'Tahoma', sans-serif !important;
+}
+
+/* کارت موجودی (Bank Card Style) */
+.woo-wallet-balance {
+    background: linear-gradient(135deg, var(--rw-secondary) 0%, var(--rw-primary) 100%);
+    color: var(--rw-text-light);
+    padding: 40px 30px;
+    border-radius: var(--rw-radius);
+    box-shadow: var(--rw-shadow);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify_content: center;
+}
+
+/* افکت شیشه‌ای روی کارت */
+.woo-wallet-balance::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.woo-wallet-balance h3 {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 14px !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 10px 0 !important;
+}
+
+.woo-wallet-balance .amount {
+    font-size: 42px !important;
+    font-weight: 800;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+/* دکمه‌های عملیاتی (واریز، انتقال) */
+.woo-wallet-content .woo-wallet-menu-contents ul {
+    display: flex;
+    gap: 15px;
+    padding: 0;
+    margin-bottom: 30px;
+    list-style: none;
+}
+
+.woo-wallet-content .woo-wallet-menu-contents ul li {
+    flex: 1;
+}
+
+.woo-wallet-content .woo-wallet-menu-contents ul li a {
+    display: block;
+    text-align: center;
+    background: #fff;
+    border: 2px solid #e0e6ed;
+    color: var(--rw-secondary);
+    padding: 15px;
+    border-radius: 12px;
+    font-weight: bold;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+}
+
+.woo-wallet-content .woo-wallet-menu-contents ul li.active a,
+.woo-wallet-content .woo-wallet-menu-contents ul li a:hover {
+    background: var(--rw-primary);
+    border-color: var(--rw-primary);
+    color: #fff;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(93, 52, 242, 0.3);
+}
+
+/* جدول تراکنش‌ها */
+table.woo-wallet-transactions {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+    margin-top: 20px;
+}
+
+table.woo-wallet-transactions thead th {
+    color: #888;
+    font-size: 13px;
+    padding: 0 15px;
+    border: none;
+}
+
+table.woo-wallet-transactions tbody tr {
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    transition: transform 0.2s;
+}
+
+table.woo-wallet-transactions tbody tr:hover {
+    transform: scale(1.01);
+}
+
+table.woo-wallet-transactions td {
+    padding: 20px 15px;
+    border: none;
+    vertical-align: middle;
+    color: var(--rw-text-main);
+}
+
+table.woo-wallet-transactions td:first-child {
+    border-radius: 0 12px 12px 0;
+}
+
+table.woo-wallet-transactions td:last-child {
+    border-radius: 12px 0 0 12px;
+    font-weight: bold;
+    color: var(--rw-primary);
+}
+
+/* آیکون وضعیت‌ها */
+.woo-wallet-transactions .credit {
+    color: #00c853 !important; /* سبز برای واریز */
+}
+.woo-wallet-transactions .debit {
+    color: #ff3d00 !important; /* قرمز برای برداشت */
+}

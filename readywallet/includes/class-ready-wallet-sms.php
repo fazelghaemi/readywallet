@@ -2,7 +2,7 @@
 /**
  * ReadyWallet SMS Manager
  * مدیریت ارسال پیامک‌های تراکنش با درگاه MessageWay (راه پیام)
- * نسخه: داینامیک (متصل به تنظیمات)
+ * نسخه: هماهنگ شده با دیتابیس مستقل ReadyWallet
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -13,27 +13,29 @@ class Ready_Wallet_SMS_Manager {
     private $is_enabled;
 
     public function __construct() {
-        // خواندن تنظیمات از دیتابیس
         $this->api_key    = get_option( 'ready_wallet_sms_api_key' );
         $this->is_enabled = get_option( 'ready_wallet_sms_enable', 'yes' );
 
-        // اگر افزونه فعال بود، هوک را اجرا کن
         if ( 'yes' === $this->is_enabled && ! empty( $this->api_key ) ) {
-            add_action('woo_wallet_transaction_process_complete', array($this, 'process_sms_trigger'), 10, 2);
+            // اتصال به هوک جدیدی که در کلاس DB تعریف کردیم
+            add_action('ready_wallet_transaction_complete', array($this, 'process_sms_trigger'), 10, 2);
         }
     }
 
     /**
      * پردازش منطق ارسال پیامک
+     * @param int $transaction_id شناسه تراکنش در جدول اختصاصی
+     * @param array $args آرایه اطلاعات تراکنش
      */
-    public function process_sms_trigger($transaction_id, $user_id) {
+    public function process_sms_trigger($transaction_id, $args) {
         
-        $transaction = get_wallet_transaction($transaction_id);
-        if (!$transaction) return;
+        // دریافت اطلاعات مستقیم از آرگومان‌ها یا دیتابیس
+        $amount  = $args['amount'];
+        $type    = $args['type']; // credit | debit
+        $user_id = $args['user_id'];
 
-        $amount  = $transaction->amount;
-        $type    = $transaction->type; // credit | debit
-        $balance = woo_wallet()->wallet->get_wallet_balance($user_id);
+        // دریافت موجودی جدید کاربر از کلاس اصلی
+        $balance = Ready_Wallet()->db->get_wallet_balance($user_id);
         
         // دریافت شماره موبایل
         $phone = get_user_meta($user_id, 'billing_phone', true);
@@ -48,7 +50,6 @@ class Ready_Wallet_SMS_Manager {
             (string)$transaction_id  // %param3%
         ];
 
-        // دریافت شناسه قالب از تنظیمات
         $tpl_charge = get_option('ready_wallet_sms_tpl_charge');
         $tpl_debit  = get_option('ready_wallet_sms_tpl_debit');
 
@@ -59,9 +60,6 @@ class Ready_Wallet_SMS_Manager {
         }
     }
 
-    /**
-     * ارسال درخواست به API MessageWay
-     */
     private function send_messageway_sms($mobile, $templateID, $params) {
         
         $url = 'https://api.msgway.com/send'; 
